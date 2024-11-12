@@ -40,8 +40,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
-          gradle-version: "8.10"
-          gradle-home-cache-cleanup: true
+          gradle-home-cache-cleanup: false # Temporarily disabled
           gradle-home-cache-excludes: |
             gradle.properties
       - name: Build with Gradle
