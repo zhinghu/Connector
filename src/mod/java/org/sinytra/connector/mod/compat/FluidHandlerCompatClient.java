@@ -1,6 +1,7 @@
 package org.sinytra.connector.mod.compat;
 
 import net.fabricmc.fabric.api.client.render.fluid.v1.FluidRenderHandler;
+import net.fabricmc.fabric.api.client.render.fluid.v1.FluidRenderHandlerRegistry;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
@@ -14,7 +15,7 @@ public final class FluidHandlerCompatClient {
 
     public static void onRegisterClientExtensions(RegisterClientExtensionsEvent event) {
         FluidHandlerCompat.getFabricFluidTypes().forEach((fluid, type) -> {
-            FluidRenderHandler renderHandler = ((FluidHandlerCompat.FabricFluidType) type).getRenderHandler();
+            FluidRenderHandler renderHandler = FluidRenderHandlerRegistry.INSTANCE.get(fluid);
             event.registerFluidType(new IClientFluidTypeExtensions() {
                 private TextureAtlasSprite[] getSprites() {
                     return renderHandler.getFluidSprites(null, null, fluid.defaultFluidState());

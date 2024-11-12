@@ -13,15 +13,12 @@
     "item.IItemExtensionMixin",
     "item.ItemStackMixin",
     "network.StreamCodecMixin",
-    "recipebook.RecipeBookCategoriesAccessor",
-    "recipebook.RecipeBookCategoriesMixin",
     "recipebook.RecipeBookManagerMixin",
     "registries.DataPackRegistriesHooksAccessor",
     "registries.MappedRegistryAccessor",
     "registries.NeoForgeRegistriesSetupAccessor",
     "registries.BuiltInRegistriesMixin",
     "registries.EntityDataSerializersMixin",
-    "registries.ItemBlockRenderTypesMixin",
     "registries.NeoForgeRegistriesSetupMixin",
     "registries.NetworkRegistryMixin",
     "registries.PoiTypesMixin",
@@ -34,7 +31,10 @@
     "client.ItemColorsMixin",
     "client.ItemOverridesMixin",
     "client.KeyMappingMixin",
-    "client.ParticleEngineMixin"
+    "client.ParticleEngineMixin",
+    "recipebook.RecipeBookCategoriesAccessor",
+    "recipebook.RecipeBookCategoriesMixin",
+    "registries.ItemBlockRenderTypesMixin"
   ],
   "server": [
     "boot.ServerMainMixin"

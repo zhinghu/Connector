@@ -1,8 +1,6 @@
 package org.sinytra.connector.mod.compat;
 
 import com.mojang.logging.LogUtils;
-import net.fabricmc.fabric.api.client.render.fluid.v1.FluidRenderHandler;
-import net.fabricmc.fabric.api.client.render.fluid.v1.FluidRenderHandlerRegistry;
 import net.fabricmc.fabric.api.transfer.v1.fluid.FluidVariant;
 import net.fabricmc.fabric.api.transfer.v1.fluid.FluidVariantAttributes;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -16,7 +14,6 @@ import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.FluidType;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
 import net.neoforged.neoforge.registries.RegisterEvent;
-import org.jetbrains.annotations.Nullable;
 import org.sinytra.connector.ConnectorEarlyLoader;
 import org.slf4j.Logger;
 
@@ -51,8 +48,7 @@ public final class FluidHandlerCompat {
             ResourceKey<Fluid> key = entry.getKey();
             Fluid fluid = entry.getValue();
             if (ModList.get().getModContainerById(key.location().getNamespace()).map(c -> ConnectorEarlyLoader.isConnectorMod(c.getModId())).orElse(false)) {
-                FluidRenderHandler renderHandler = FluidRenderHandlerRegistry.INSTANCE.get(fluid);
-                FluidType type = new FabricFluidType(FluidType.Properties.create(), fluid, renderHandler);
+                FluidType type = new FabricFluidType(FluidType.Properties.create(), fluid);
                 FABRIC_FLUID_TYPES.put(fluid, type);
                 FABRIC_FLUID_TYPES_BY_NAME.put(key.location(), type);
             }
@@ -64,18 +60,11 @@ public final class FluidHandlerCompat {
     }
 
     static class FabricFluidType extends FluidType {
-        @Nullable
-        private final FluidRenderHandler renderHandler;
         private final Component name;
 
-        public FabricFluidType(Properties properties, Fluid fluid, @Nullable FluidRenderHandler renderHandler) {
+        public FabricFluidType(Properties properties, Fluid fluid) {
             super(properties);
-            this.renderHandler = renderHandler;
             this.name = FluidVariantAttributes.getName(FluidVariant.of(fluid));
-        }
-
-        public FluidRenderHandler getRenderHandler() {
-            return renderHandler;
         }
 
         @Override
