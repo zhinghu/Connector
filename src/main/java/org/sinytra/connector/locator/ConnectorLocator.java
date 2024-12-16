@@ -147,6 +147,9 @@ public class ConnectorLocator implements IDependencyLocator {
 
     private static IModFile createConnectorModFile(SplitPackageMerger.FilteredModPath modPath) {
         JarContents jarContents = new JarContentsBuilder().paths(modPath.paths()).pathFilter(modPath.filter()).build();
+        if (modPath.metadata().generated()) {
+            return IModFile.create(SecureJar.from(jarContents), JarModsDotTomlModFileReader::manifestParser, IModFile.Type.LIBRARY, ModFileDiscoveryAttributes.DEFAULT);
+        }
         ModJarMetadata modJarMetadata = new ModJarMetadata(jarContents);
         SecureJar secureJar = SecureJar.from(jarContents, modJarMetadata);
         IModFile modFile = IModFile.create(secureJar, f -> FabricModMetadataParser.createForgeMetadata(f, modPath.metadata().modMetadata(), modPath.metadata().visibleMixinConfigs(), modPath.metadata().generated()));

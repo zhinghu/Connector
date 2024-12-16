@@ -1,16 +1,17 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import me.modmuss50.mpp.ReleaseType
 import net.neoforged.moddevgradle.dsl.RunModel
+import net.neoforged.moddevgradle.internal.RunGameTask
 import java.time.LocalDateTime
 
 plugins {
     java
     `maven-publish`
-    id("net.neoforged.moddev") version "2.0.1-beta"
+    id("net.neoforged.moddev") version "2.0.52-beta"
     id("io.github.goooler.shadow") version "8.1.8" apply false
     id("me.modmuss50.mod-publish-plugin") version "0.5.+"
     id("net.neoforged.gradleutils") version "3.0.0"
-    id("org.sinytra.adapter.userdev") version "1.2-SNAPSHOT"
+    id("org.sinytra.adapter.userdev") version "1.2.1-SNAPSHOT"
 }
 
 val versionConnector: String by project
@@ -62,13 +63,9 @@ configurations {
     }
 
     "modCompileOnly" {
-        extendsFrom(configurations.compileOnly.get())
-    }
-
-    "modImplementation" {
         extendsFrom(shade)
     }
-    
+
     additionalRuntimeClasspath {
         extendsFrom(shade)
     }
@@ -95,21 +92,24 @@ neoForge {
             systemProperty("connector.logging.markers", "MIXINPATCH,MERGER")
             systemProperty("mixin.debug.export", "true")
             gameDirectory.set(layout.projectDirectory.dir("run"))
-
-            mods {
-                maybeCreate("connector").apply {
-                    sourceSet(mod)
-                }
-            }
         }
 
         create("client") {
             client()
             config(this)
         }
+
         create("server") {
             server()
             config(this)
+        }
+    }
+
+    addModdingDependenciesTo(mod)
+
+    mods {
+        maybeCreate("connector").apply {
+            sourceSet(mod)
         }
     }
 }
@@ -217,6 +217,9 @@ tasks {
     }
     assemble {
         dependsOn(fullJar)
+    }
+    withType<RunGameTask> {
+        dependsOn(jar)
     }
 }
 
