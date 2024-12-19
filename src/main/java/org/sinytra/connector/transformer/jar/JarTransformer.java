@@ -17,6 +17,8 @@ import net.neoforged.fml.loading.FMLLoader;
 import net.neoforged.fml.loading.progress.ProgressMeter;
 import net.neoforged.fml.loading.progress.StartupNotificationManager;
 import net.neoforged.neoforgespi.locating.IModFile;
+import org.jetbrains.annotations.Nullable;
+import org.sinytra.adapter.patch.api.PatchAuditTrail;
 import org.sinytra.connector.ConnectorEarlyLoader;
 import org.sinytra.connector.locator.ConnectorFabricModMetadata;
 import org.sinytra.connector.locator.DependencyResolver;
@@ -133,12 +135,12 @@ public final class JarTransformer {
                 initProgress.complete();
             }
             ExecutorService executorService = Executors.newFixedThreadPool(paths.size());
-            List<Pair<File, Future<FabricModPath>>> futures = paths.stream()
+            List<Pair<File, Future<Pair<FabricModPath, PatchAuditTrail>>>> futures = paths.stream()
                 .map(jar -> {
-                    Future<FabricModPath> future = executorService.submit(() -> {
-                        FabricModPath path = jar.transform(transformInstance);
+                    Future<Pair<FabricModPath, PatchAuditTrail>> future = executorService.submit(() -> {
+                        Pair<FabricModPath, PatchAuditTrail> pair = jar.transform(transformInstance);
                         progress.increment();
-                        return path;
+                        return pair;
                     });
                     return Pair.of(jar.input(), future);
                 })
@@ -150,7 +152,8 @@ public final class JarTransformer {
             List<TransformedFabricModPath> results = futures.stream()
                 .map(pair -> {
                     try {
-                        return new TransformedFabricModPath(pair.getFirst().toPath(), pair.getSecond().get());
+                        Pair<FabricModPath, PatchAuditTrail> result = pair.getSecond().get();
+                        return new TransformedFabricModPath(pair.getFirst().toPath(), result.getFirst(), result.getSecond());
                     } catch (Throwable t) {
                         throw new ModLoadingException(ConnectorEarlyLoader.createGenericLoadingIssue(t, "Error transforming file " + pair.getFirst().getName()));
                     }
@@ -260,20 +263,20 @@ public final class JarTransformer {
 
     public record FabricModPath(Path path, FabricModFileMetadata metadata) {}
 
-    public record TransformedFabricModPath(Path input, FabricModPath output) {}
+    public record TransformedFabricModPath(Path input, FabricModPath output, @Nullable PatchAuditTrail auditTrail) {}
 
     public record FabricModFileMetadata(ConnectorFabricModMetadata modMetadata, Collection<String> visibleMixinConfigs, Collection<String> mixinConfigs, Set<String> refmaps, Set<String> mixinPackages, Attributes manifestAttributes, boolean containsAT, boolean generated) {}
 
     public record TransformableJar(File input, FabricModPath modPath, ConnectorUtil.CacheFile cacheFile) {
-        public FabricModPath transform(JarTransformInstance transformInstance) throws IOException {
+        public Pair<FabricModPath, PatchAuditTrail> transform(JarTransformInstance transformInstance) throws IOException {
             Files.deleteIfExists(this.modPath.path);
-            transformInstance.transformJar(this.input, this.modPath.path, this.modPath.metadata());
+            PatchAuditTrail audit = transformInstance.transformJar(this.input, this.modPath.path, this.modPath.metadata());
             this.cacheFile.save();
-            return this.modPath;
+            return Pair.of(this.modPath, audit);
         }
 
         public TransformedFabricModPath toTransformedPath() {
-            return new TransformedFabricModPath(this.input.toPath(), this.modPath);
+            return new TransformedFabricModPath(this.input.toPath(), this.modPath, null);
         }
     }
 }

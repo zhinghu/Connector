@@ -27,7 +27,7 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public record ConnectorConfig(int version, List<String> hiddenMods, Multimap<String, String> globalModAliases) {
+public record ConnectorConfig(int version, List<String> hiddenMods, Multimap<String, String> globalModAliases, boolean enableMixinSafeguard) {
     public static final Codec<ConnectorConfig> CODEC = RecordCodecBuilder.create(instance -> instance.group(
         Codec.INT
             .comapFlatMap(i -> i == 1 ? DataResult.success(i) : DataResult.error(() -> "Unsupported \"version\", must be 1"), Function.identity())
@@ -39,7 +39,7 @@ public record ConnectorConfig(int version, List<String> hiddenMods, Multimap<Str
             .forGetter(c -> Optional.of(c.hiddenMods())),
         Codec.unboundedMap(
             Codec.STRING,
-            Codec.either(Codec.STRING.listOf(), Codec.STRING).xmap(either -> either.map(list -> list, List::of), list -> list.size() == 1 ? Either.right(list.get(0)) : Either.left(list))
+            Codec.either(Codec.STRING.listOf(), Codec.STRING).xmap(either -> either.map(list -> list, List::of), list -> list.size() == 1 ? Either.right(list.getFirst()) : Either.left(list))
         )
             .xmap(map -> {
                 Multimap<String, String> aliases = HashMultimap.create();
@@ -51,14 +51,17 @@ public record ConnectorConfig(int version, List<String> hiddenMods, Multimap<Str
                 return map;
             })
             .optionalFieldOf("globalModAliases", ImmutableMultimap.of())
-            .forGetter(ConnectorConfig::globalModAliases)
+            .forGetter(ConnectorConfig::globalModAliases),
+        Codec.BOOL
+            .optionalFieldOf("enableMixinSafeguard")
+            .forGetter(c -> Optional.of(c.enableMixinSafeguard()))
     ).apply(instance, ConnectorConfig::new));
 
-    ConnectorConfig(Optional<Integer> version, Optional<List<String>> hiddenMods, Multimap<String, String> globalModAliases) {
-        this(version.orElse(1), hiddenMods.orElseGet(List::of), globalModAliases);
+    ConnectorConfig(Optional<Integer> version, Optional<List<String>> hiddenMods, Multimap<String, String> globalModAliases, Optional<Boolean> enableMixinSafeguard) {
+        this(version.orElse(1), hiddenMods.orElseGet(List::of), globalModAliases, enableMixinSafeguard.orElse(true));
     }
 
-    private static final ConnectorConfig DEFAULT = new ConnectorConfig(1, List.of(), ConnectorUtil.DEFAULT_GLOBAL_MOD_ALIASES);
+    private static final ConnectorConfig DEFAULT = new ConnectorConfig(1, List.of(), ConnectorUtil.DEFAULT_GLOBAL_MOD_ALIASES, true);
     private static final Logger LOGGER = LogUtils.getLogger();
     public static final Supplier<ConnectorConfig> INSTANCE = Suppliers.memoize(() -> {
         Path path = FMLPaths.CONFIGDIR.get().resolve("connector.json");

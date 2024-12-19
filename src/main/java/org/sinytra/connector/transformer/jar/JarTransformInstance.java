@@ -18,6 +18,7 @@ import net.neoforged.fml.loading.FMLLoader;
 import net.neoforged.fml.loading.LibraryFinder;
 import net.neoforged.fml.loading.MavenCoordinate;
 import net.neoforged.neoforgespi.locating.IModFile;
+import org.jetbrains.annotations.Nullable;
 import org.sinytra.adapter.patch.LVTOffsets;
 import org.sinytra.adapter.patch.api.Patch;
 import org.sinytra.adapter.patch.api.PatchAuditTrail;
@@ -111,12 +112,13 @@ public class JarTransformInstance {
         return bfu;
     }
 
-    public void transformJar(File input, Path output, JarTransformer.FabricModFileMetadata metadata) throws IOException {
+    @Nullable
+    public PatchAuditTrail transformJar(File input, Path output, JarTransformer.FabricModFileMetadata metadata) throws IOException {
         Stopwatch stopwatch = Stopwatch.createStarted();
 
         if (metadata.generated()) {
             processGeneratedJar(input, output, stopwatch);
-            return;
+            return null;
         }
 
         String jarMapping = metadata.manifestAttributes().getValue(FABRIC_MAPPING_NAMESPACE);
@@ -130,10 +132,11 @@ public class JarTransformInstance {
         IMappingFile intermediaryToSrg = resolver.getCurrentMap(JarTransformer.SOURCE_NAMESPACE);
         AccessorRedirectTransformer accessorRedirectTransformer = new AccessorRedirectTransformer(srgToIntermediary);
 
+        PatchAuditTrail jarTrail = PatchAuditTrail.create();
         List<Patch> extraPatches = Stream.concat(this.adapterPatches.stream(), AccessorRedirectTransformer.PATCHES.stream()).toList();
         ConnectorRefmapHolder refmapHolder = new ConnectorRefmapHolder(refmap.merged(), refmap.files());
         int fabricLVTCompatibility = FabricMixinBootstrap.MixinConfigDecorator.getMixinCompat(metadata.modMetadata());
-        PatchEnvironment environment = PatchEnvironment.create(refmapHolder, this.cleanClassLookup, this.bfu.unwrap(), fabricLVTCompatibility, this.auditTrail);
+        PatchEnvironment environment = PatchEnvironment.create(refmapHolder, this.cleanClassLookup, this.bfu.unwrap(), fabricLVTCompatibility, jarTrail);
         MixinPatchTransformer patchTransformer = new MixinPatchTransformer(this.lvtOffsetsData, environment, extraPatches);
         RefmapRemapper refmapRemapper = new RefmapRemapper(refmap.files());
         Renamer.Builder builder = Renamer.builder()
@@ -168,6 +171,9 @@ public class JarTransformInstance {
 
         stopwatch.stop();
         LOGGER.debug(JarTransformer.TRANSFORM_MARKER, "Jar {} transformed in {} ms", input.getName(), stopwatch.elapsed(TimeUnit.MILLISECONDS));
+
+        this.auditTrail.merge(jarTrail);
+        return jarTrail;
     }
 
     private static void processGeneratedJar(File input, Path output, Stopwatch stopwatch) throws IOException {

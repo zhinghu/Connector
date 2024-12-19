@@ -132,6 +132,11 @@ public class ConnectorLocator implements IDependencyLocator {
         // Run jar transformations (or get existing outputs from cache)
         List<JarTransformer.TransformedFabricModPath> transformed = JarTransformer.transform(candidates, renameLibs, loadedModFiles);
 
+        List<JarTransformer.TransformedFabricModPath> failing = transformed.stream().filter(j -> j.auditTrail() != null && j.auditTrail().hasFailingMixins()).toList();
+        if (!failing.isEmpty()) {
+            MixinTransformSafeguard.trigger(failing);
+        }
+
         // Skip last step to save time if an error occured during transformation
         if (ConnectorEarlyLoader.hasEncounteredException()) {
             StartupNotificationManager.addModMessage("JAR TRANSFORMATION ERROR");
