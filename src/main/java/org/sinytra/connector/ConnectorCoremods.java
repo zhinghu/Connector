@@ -173,6 +173,7 @@ public class ConnectorCoremods implements ICoreMod {
             TargetType.METHOD,
             Set.of(
                 ITransformer.Target.targetMethod("com.chocohead.mm.Plugin$1", "generate", "()Ljava/util/function/Consumer;"),
+                ITransformer.Target.targetMethod("com.chocohead.mm.Plugin$1", "generate", "(Ljava/lang/String;Ljava/util/Collection;)V"),
                 ITransformer.Target.targetMethod("me.shedaniel.mm.Plugin$1", "generate", "(Ljava/lang/String;Ljava/util/Collection;)V")
             ),
             input -> {

@@ -7,24 +7,10 @@ import net.minecraftforge.fart.internal.EnhancedRemapper;
 import net.minecraftforge.fart.internal.RenamingTransformer;
 import net.minecraftforge.srgutils.IMappingFile;
 import org.jetbrains.annotations.Nullable;
-import org.objectweb.asm.AnnotationVisitor;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Handle;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
+import org.objectweb.asm.*;
 import org.objectweb.asm.commons.ClassRemapper;
 import org.objectweb.asm.commons.Remapper;
-import org.objectweb.asm.tree.AbstractInsnNode;
-import org.objectweb.asm.tree.AnnotationNode;
-import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.FieldNode;
-import org.objectweb.asm.tree.InvokeDynamicInsnNode;
-import org.objectweb.asm.tree.LdcInsnNode;
-import org.objectweb.asm.tree.MethodInsnNode;
-import org.objectweb.asm.tree.MethodNode;
-import org.objectweb.asm.tree.VarInsnNode;
+import org.objectweb.asm.tree.*;
 import org.sinytra.adapter.patch.analysis.MethodCallAnalyzer;
 import org.sinytra.adapter.patch.analysis.selector.AnnotationHandle;
 import org.sinytra.adapter.patch.analysis.selector.AnnotationValueHandle;
@@ -33,12 +19,7 @@ import org.sinytra.connector.transformer.jar.IntermediateMapping;
 import org.spongepowered.asm.mixin.gen.AccessorInfo;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
@@ -107,7 +88,8 @@ public final class OptimizedRenamingTransformer extends RenamingTransformer {
     }
 
     private void avoidAmbigousMappingRecursion(ClassNode classNode, MethodNode method) {
-        if (isAmbigousOverridenMethod(classNode, method)) {
+        int parentMethods = countAmbigousOverridenMethods(classNode, method);
+        if (parentMethods > 1) {
             for (AbstractInsnNode insn : method.instructions) {
                 if (insn instanceof MethodInsnNode minsn && minsn.getOpcode() == Opcodes.INVOKEVIRTUAL && minsn.owner.equals(classNode.name) && minsn.name.equals(method.name) && minsn.desc.equals(method.desc)) {
                     List<AbstractInsnNode> insns = MethodCallAnalyzer.findMethodCallParamInsns(method, minsn);
@@ -117,16 +99,25 @@ public final class OptimizedRenamingTransformer extends RenamingTransformer {
                 }
             }
         }
+        // Look for ambigous methods in our own class
+        if (parentMethods > 0) {
+            int i = 1;
+            for (MethodNode m : classNode.methods) {
+                if (m != method && m.name.equals(method.name) && m.desc.equals(method.desc)) {
+                    m.name += "$connector_disabled$" + i;
+                }
+            }
+        }
     }
 
-    private boolean isAmbigousOverridenMethod(ClassNode classNode, MethodNode method) {
-        return classNode.superName != null && this.remapper.getClass(classNode.name)
-            .map(c -> c.getMethods().stream()
+    private int countAmbigousOverridenMethods(ClassNode classNode, MethodNode method) {
+        return classNode.superName != null ? this.remapper.getClass(classNode.name)
+            .map(c -> (int) c.getMethods().stream()
                 .flatMap(Optional::stream)
                 .filter(m -> !m.getName().equals(m.getMapped()) && m.getMapped().equals(method.name) && method.desc.equals(this.remapper.mapMethodDesc(m.getDescriptor())) 
                     && (m.getAccess() & (ACC_PRIVATE | ACC_STATIC)) == 0)
-                .count() > 1)
-            .orElse(false);
+                .count())
+            .orElse(0) : 0;
     }
 
     private void processMixinAnnotation(AnnotationNode annotation, PostProcessRemapper postProcessRemapper) {
@@ -280,10 +271,6 @@ public final class OptimizedRenamingTransformer extends RenamingTransformer {
         public MixinAwareEnhancedRemapper(ClassProvider classProvider, IMappingFile map, IntermediateMapping flatMappings, Consumer<String> log) {
             super(classProvider, map, log);
             this.flatMappings = flatMappings;
-        }
-
-        public ClassProvider getUpstreamProvider() {
-            return ((IntermediaryClassProvider) this.classProvider).upstream;
         }
 
         @Override

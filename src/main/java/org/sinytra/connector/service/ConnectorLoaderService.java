@@ -12,7 +12,6 @@ import net.neoforged.fml.loading.ImmediateWindowHandler;
 import net.neoforged.fml.loading.LoadingModList;
 import net.neoforged.neoforgespi.earlywindow.ImmediateWindowProvider;
 import org.sinytra.connector.ConnectorEarlyLoader;
-import org.sinytra.connector.locator.ConnectorLocator;
 import org.sinytra.connector.service.hacks.ConnectorForkJoinThreadFactory;
 import org.sinytra.connector.service.hacks.FabricASMFixer;
 import org.sinytra.connector.service.hacks.LenientRuntimeEnumExtender;
@@ -38,6 +37,7 @@ import static cpw.mods.modlauncher.api.LambdaExceptionUtils.uncheck;
 public class ConnectorLoaderService implements ITransformationService {
     private static final String NAME = "connector_loader";
     private static final String AUTHLIB_MODULE = "authlib";
+    private static final String BRIGADIER_MODULE = "brigadier";
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final VarHandle PLUGINS = uncheck(() -> ConnectorUtil.TRUSTED_LOOKUP.findVarHandle(LaunchPluginHandler.class, "plugins", Map.class));
 
@@ -122,7 +122,8 @@ public class ConnectorLoaderService implements ITransformationService {
         }
         return List.of(new Resource(IModuleLayerManager.Layer.GAME, List.of(
             FabricASMFixer.provideGeneratedClassesJar(),
-            ModuleLayerMigrator.moveModule(AUTHLIB_MODULE)
+            ModuleLayerMigrator.moveModule(AUTHLIB_MODULE),
+            ModuleLayerMigrator.moveModule(BRIGADIER_MODULE)
         )));
     }
 
